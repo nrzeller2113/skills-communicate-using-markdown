@@ -1,5 +1,4 @@
-# My first header
-## second
+
 
 <!--
   <<< Author notes: Course header >>>
