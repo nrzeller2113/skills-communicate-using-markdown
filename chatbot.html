@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chatbot - Gemini</title>
+    <title>Onboard AI Assistant</title>
     <style>
         * {
             margin: 0;
@@ -237,7 +237,7 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            💬 AI Assistant (Gemini)
+            🚀 Onboard AI Assistant
         </div>
 
         <div class="api-key-section" id="apiKeySection">
@@ -256,8 +256,8 @@
                 <svg fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                 </svg>
-                <h3>Welcome to AI Assistant</h3>
-                <p>Enter your Google Gemini API key above to start chatting</p>
+                <h3>Welcome to Onboard AI</h3>
+                <p>Your intelligent onboarding assistant. Enter your API key to get started.</p>
             </div>
         </div>
 
@@ -360,9 +360,48 @@
             if (loading) loading.remove();
         }
 
-        // Convert messages to Gemini format
+        // Convert messages to Gemini format with onboarding system prompt
         function convertMessagesToGemini() {
             const contents = [];
+            
+            // Add system prompt at the start to make AI onboarding-specific
+            const systemPrompt = `You are the Onboard AI Assistant, a specialized AI helper focused exclusively on onboarding support. Your purpose is to guide users through three specific onboarding workflows:
+
+1. **New Hire Onboarding** - Help employees complete required forms, upload employment documents (I-9, W-4, direct deposit), finish training modules, and understand company policies.
+
+2. **Patient/Client Intake** - Assist patients or clients with completing intake forms, uploading medical documents, insurance cards, photo IDs, and medical history information.
+
+3. **Healthcare Service Quotes** - Guide users through requesting cost estimates for healthcare services, explain pricing factors, and clarify insurance coverage.
+
+Your responsibilities:
+- Provide clear, step-by-step guidance for completing onboarding tasks
+- Explain what documents are needed and why
+- Help users understand form fields and requirements
+- Answer questions about onboarding processes
+- Offer helpful tips to streamline onboarding
+- Be empathetic and supportive - onboarding can be overwhelming
+
+Your boundaries:
+- Politely redirect general questions back to onboarding topics
+- Don't provide medical advice or financial advice
+- Focus only on the onboarding process, not general AI assistance
+- If asked about non-onboarding topics, gently say: "I'm specifically designed to help with onboarding tasks. How can I assist you with your new hire onboarding, patient intake, or healthcare quote?"
+
+Tone: Professional, friendly, patient, and confidence-building. Keep answers concise but thorough.`;
+
+            // First message should be from the user, containing the system prompt
+            // Then add it as a user message with the AI acknowledging its role
+            if (messages.length === 0) {
+                // If this is the first message, prepend system context
+                contents.push({
+                    role: 'user',
+                    parts: [{ text: systemPrompt }]
+                });
+                contents.push({
+                    role: 'model',
+                    parts: [{ text: 'Understood. I am Onboard AI Assistant, ready to help with new hire onboarding, patient intake, or healthcare service quotes. How can I assist you today?' }]
+                });
+            }
             
             messages.forEach(msg => {
                 contents.push({
