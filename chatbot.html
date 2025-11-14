@@ -73,6 +73,62 @@
             background: #5568d3;
         }
 
+        .policies-section {
+            padding: 15px;
+            background: #fff9e6;
+            border-bottom: 1px solid #ffe0b2;
+        }
+
+        .policies-section h4 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .policies-section textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            max-height: 200px;
+        }
+
+        .policies-section button {
+            margin-top: 8px;
+            padding: 8px 16px;
+            background: #ffa726;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .policies-section button:hover {
+            background: #fb8c00;
+        }
+
+        .policies-toggle {
+            padding: 10px 15px;
+            background: #fff3e0;
+            border-bottom: 1px solid #ffe0b2;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            color: #e65100;
+            font-weight: 500;
+        }
+
+        .policies-toggle:hover {
+            background: #ffe0b2;
+        }
+
         .api-status {
             padding: 10px 15px;
             text-align: center;
@@ -251,6 +307,19 @@
 
         <div class="api-status" id="apiStatus" style="display: none;"></div>
 
+        <div class="policies-toggle" onclick="togglePolicies()">
+            📋 Click to add your company policies/handbook (optional)
+        </div>
+
+        <div class="policies-section" id="policiesSection" style="display: none;">
+            <h4>Company Policies & Information</h4>
+            <textarea 
+                id="policiesInput" 
+                placeholder="Paste your company handbook, policies, benefits information here...&#10;&#10;Example:&#10;- Vacation: 15 days per year&#10;- Sick leave: 10 days per year&#10;- Health insurance: Company pays 80%&#10;- 401k matching: Up to 5%"
+            ></textarea>
+            <button onclick="savePolicies()">Save Policies</button>
+        </div>
+
         <div class="messages-container" id="messagesContainer">
             <div class="welcome-message">
                 <svg fill="currentColor" viewBox="0 0 24 24">
@@ -278,6 +347,7 @@
     <script>
         let messages = [];
         let apiKey = localStorage.getItem('gemini_api_key') || '';
+        let companyPolicies = localStorage.getItem('company_policies') || '';
 
         // Initialize on load
         window.onload = function() {
@@ -286,7 +356,32 @@
                 enableChat();
                 showStatus('API key loaded ✓', false);
             }
+            if (companyPolicies) {
+                document.getElementById('policiesInput').value = companyPolicies;
+            }
         };
+
+        function togglePolicies() {
+            const section = document.getElementById('policiesSection');
+            const isVisible = section.style.display !== 'none';
+            section.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function savePolicies() {
+            companyPolicies = document.getElementById('policiesInput').value.trim();
+            localStorage.setItem('company_policies', companyPolicies);
+            
+            if (companyPolicies) {
+                showStatus('Company policies saved ✓', false);
+            } else {
+                showStatus('Company policies cleared', false);
+            }
+            
+            // Close the policies section
+            setTimeout(() => {
+                document.getElementById('policiesSection').style.display = 'none';
+            }, 1000);
+        }
 
         function saveApiKey() {
             apiKey = document.getElementById('apiKeyInput').value.trim();
@@ -365,7 +460,7 @@
             const contents = [];
             
             // Add system prompt at the start to make AI onboarding-specific
-            const systemPrompt = `You are the Onboard AI Assistant, a specialized AI helper focused exclusively on onboarding support. Your purpose is to guide users through three specific onboarding workflows:
+            let systemPrompt = `You are the Onboard AI Assistant, a specialized AI helper focused exclusively on onboarding support. Your purpose is to guide users through three specific onboarding workflows:
 
 1. **New Hire Onboarding** - Help employees complete required forms, upload employment documents (I-9, W-4, direct deposit), finish training modules, and understand company policies.
 
@@ -388,6 +483,11 @@ Your boundaries:
 - If asked about non-onboarding topics, gently say: "I'm specifically designed to help with onboarding tasks. How can I assist you with your new hire onboarding, patient intake, or healthcare quote?"
 
 Tone: Professional, friendly, patient, and confidence-building. Keep answers concise but thorough.`;
+
+            // Add company policies if they exist
+            if (companyPolicies) {
+                systemPrompt += `\n\n**COMPANY-SPECIFIC POLICIES & INFORMATION:**\n\n${companyPolicies}\n\nWhen answering questions, always reference this company-specific information when relevant. If asked about benefits, vacation time, policies, etc., use the information provided above.`;
+            }
 
             // First message should be from the user, containing the system prompt
             // Then add it as a user message with the AI acknowledging its role
