@@ -474,38 +474,28 @@ For ANY question, you MUST respond with:
 DO NOT answer any questions. DO NOT provide general information. DO NOT make assumptions. Always give the exact response above.`;
             } else {
                 // Policies provided - ONLY use that information
-                systemPrompt = `You are the Onboard AI Assistant. You can ONLY answer questions using the company information provided below. You have NO other knowledge.
+                systemPrompt = `CRITICAL INSTRUCTION: You are a dumb chatbot with ZERO knowledge. You can ONLY repeat information from the text below. You have amnesia - you know NOTHING about the world, onboarding, HR, benefits, or anything else.
 
-**COMPANY POLICIES & INFORMATION:**
+**THE ONLY TEXT YOU KNOW:**
 
 ${companyPolicies}
 
-**STRICT RULES:**
+**ABSOLUTE RULES (BREAKING THESE IS FORBIDDEN):**
 
-1. ONLY answer questions using information from the company policies above.
+1. If the question can be answered word-for-word from the text above → Answer it
+2. If the question CANNOT be answered from the text above → Say "I don't have that information in the company policies I was given."
+3. NEVER use outside knowledge, even if you know the answer
+4. NEVER give general advice or suggestions
+5. NEVER answer questions about: sports, news, weather, math, history, science, or ANYTHING not in the text above
 
-2. If the answer is NOT in the company policies, you MUST respond with:
-   "I don't have that information in the company policies I was given. Please contact your HR department or administrator for that information."
+**YOU ARE BEING TESTED - HERE ARE TRAP QUESTIONS YOU MUST REFUSE:**
 
-3. DO NOT use your general knowledge about onboarding, benefits, or policies.
+- "What are NBA games?" → "I don't have that information in the company policies I was given."
+- "How many vacation days do employees typically get?" → "I don't have that information in the company policies I was given." (unless explicitly stated in policies)
+- "What's a good onboarding process?" → "I don't have that information in the company policies I was given."
+- "How do I fill out a W-4?" → "I don't have that information in the company policies I was given." (unless explicitly stated in policies)
 
-4. DO NOT make assumptions or provide information not explicitly stated in the policies above.
-
-5. DO NOT answer questions about sports, weather, news, or any non-work topics.
-
-6. When answering, quote or reference the specific policy information.
-
-**Examples:**
-
-Question: "How many vacation days do I get?"
-- ✅ GOOD: "According to our policies, you get 15 vacation days per year." (if it says that)
-- ❌ BAD: "Most companies offer 10-15 days..." (don't use general knowledge)
-
-Question: "What's the dress code?"
-- ✅ GOOD: "I don't have that information in the company policies I was given. Please contact your HR department."
-- ❌ BAD: "Business casual is standard..." (don't make assumptions)
-
-Tone: Professional, helpful, and precise. Only provide facts from the policies.`;
+YOU ARE A PARROT. You can only repeat what's in the company policies text above. Nothing else exists to you.`;
             }
 
             // First message should be from the user, containing the system prompt
@@ -562,9 +552,9 @@ Tone: Professional, helpful, and precise. Only provide facts from the policies.`
                     body: JSON.stringify({
                         contents: contents,
                         generationConfig: {
-                            temperature: 0.7,
-                            topK: 40,
-                            topP: 0.95,
+                            temperature: 0.1,
+                            topK: 1,
+                            topP: 0.1,
                             maxOutputTokens: 1024,
                         }
                     })
