@@ -1,0 +1,171 @@
+// server/routes.ts (CHAT ENDPOINTS ONLY)
+
+import type { Express, Request, Response } from "express";
+import { isAuthenticated } from "./replitAuth";
+import { storage } from "./storage";
+import { chatCompletion } from "./openai";
+import { insertChatMessageSchema } from "@shared/schema";
+
+function getUserId(req: Request): string {
+  const user = req.user as any;
+  if (!user?.claims?.sub) {
+    throw new Error("User not authenticated");
+  }
+  return user.claims.sub;
+}
+
+export function registerRoutes(app: Express) {
+  // Get chat history
+  app.get("/api/chat/messages/:sessionId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const { sessionId } = req.params;
+      
+      const messages = await storage.getChatMessages(userId, sessionId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Send new message and get AI response
+  app.post("/api/chat/messages", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const { content, sessionId } = req.body;
+
+      // Save user message
+      const userMessage = await storage.createChatMessage({
+        userId,
+        sessionId: sessionId || null,
+        role: "user",
+        content,
+      });
+
+      // Get conversation history
+      const conversationHistory = await storage.getChatMessages(userId, sessionId);
+      const messages = conversationHistory.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      // System prompt for the AI
+      const systemPrompt = {
+        role: "system",
+        content: "You are a helpful AI assistant. Help users with their questions. Be friendly, professional, and concise.",
+      };
+
+      // Call OpenAI
+      const aiResponse = await chatCompletion([systemPrompt, ...messages]);
+
+      // Save AI response
+      const assistantMessage = await storage.createChatMessage({
+        userId,
+        sessionId: sessionId || null,
+        role: "assistant",
+        content: aiResponse,
+      });
+
+      res.json({ userMessage, assistantMessage });
+    } catch (error) {
+      console.error("Error creating chat message:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+}
+// server/openai.ts
+
+import OpenAI from "openai";
+
+// Using Replit's AI Integrations (no API key needed)
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+});
+
+export async function chatCompletion(messages: Array<{ role: string; content: string }>) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: messages as any,
+      max_completion_tokens: 8192,
+    });
+    return response.choices[0]?.message?.content || "";
+  } catch (error) {
+    console.error("OpenAI chat completion error:", error);
+    throw error;
+  }
+}
+// shared/schema.ts (CHAT MESSAGES TABLE ONLY)
+
+import { pgTable, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  sessionId: varchar("session_id"),
+  role: varchar("role").notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+// server/storage.ts (CHAT METHODS ONLY)
+
+import type { ChatMessage, InsertChatMessage } from "@shared/schema";
+
+interface IStorage {
+  getChatMessages(userId: string, sessionId?: string): Promise<ChatMessage[]>;
+  createChatMessage(data: InsertChatMessage): Promise<ChatMessage>;
+}
+
+class MemStorage implements IStorage {
+  private chatMessages: Map<string, ChatMessage> = new Map();
+
+  async getChatMessages(userId: string, sessionId?: string): Promise<ChatMessage[]> {
+    return Array.from(this.chatMessages.values())
+      .filter(msg => 
+        msg.userId === userId && 
+        (!sessionId || msg.sessionId === sessionId)
+      )
+      .sort((a, b) => 
+        new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime()
+      );
+  }
+
+  async createChatMessage(data: InsertChatMessage): Promise<ChatMessage> {
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: new Date(),
+    };
+    this.chatMessages.set(message.id, message);
+    return message;
+  }
+}
+
+export const storage = new MemStorage();
+// In your app (e.g., App.tsx or any page)
+
+import { AIChatWidget } from './components/AIChatWidget';
+
+export default function MyApp() {
+  return (
+    <div>
+      {/* Your app content */}
+      
+      {/* Add chatbot - that's it! */}
+      <AIChatWidget sessionId="optional-session-id" />
+    </div>
+  );
+}
